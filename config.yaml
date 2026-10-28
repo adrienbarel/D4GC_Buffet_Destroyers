@@ -1,8 +1,11 @@
 # Single source of truth. See docs/PROJECT_SPEC.md section 5.
 # Weights and link costs are DEMO PLACEHOLDERS, not MSF data.
 paths:
-  data_root: "C:/Users/adrie/Documents/D4FG/D4GC data/D4GC data"   # contains Original/ and Parsed/ (override with env D4GC_DATA_ROOT)
-  metadata_csv: "C:/Users/adrie/Documents/D4FG/documentation.csv"   # override with env D4GC_METADATA_CSV
+  data_root: "./data_raw"                         # contains Parsed/ (and Original/ if available). Env D4GC_DATA_ROOT overrides
+  metadata_csv: "./data_raw/documentation.csv"     # id, genre, language. Env D4GC_METADATA_CSV overrides
+  originals_manifest: "./data_raw/originals_manifest.csv"  # id, original_ext, original_bytes, original_title
+  # In Kiro the 403 MB of originals are NOT uploaded. Sizes + titles come from the manifest,
+  # and the cloud server serves a placeholder file of the real size (see PROJECT_SPEC 6 and 10.1).
   work_dir: "./data"
 
 ports: { cloud: 9000, hub: 8000, devices_start: 8101 }

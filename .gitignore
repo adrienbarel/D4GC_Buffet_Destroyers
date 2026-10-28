@@ -1,5 +1,6 @@
 # --- MSF challenge data: NEVER commit (public repo, large files) ---
 data/
+data_raw/
 D4GC data/
 *.zip
 *.pdf

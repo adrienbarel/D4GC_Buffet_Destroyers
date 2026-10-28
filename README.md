@@ -11,23 +11,23 @@ Full design: [`docs/PROJECT_SPEC.md`](docs/PROJECT_SPEC.md). Build tasks: [`.kir
 
 ## Data (not in this repo)
 
-The MSF documents are **not committed** (the repo is public, and the files are 400+ MB). Each teammate keeps them locally and points to them:
+The MSF documents are **not committed** (the repo is public). Put the data pack in `./data_raw/` (gitignored):
 
-- either edit `paths` in `config.yaml`,
-- or set environment variables (PowerShell):
-  ```powershell
-  $env:D4GC_DATA_ROOT = "C:\path\to\D4GC data\D4GC data"   # folder with Original\ and Parsed\
-  $env:D4GC_METADATA_CSV = "C:\path\to\documentation.csv"
-  ```
+```
+data_raw/Parsed/*.md              # text of the 582 documents
+data_raw/documentation.csv        # id, genre, language
+data_raw/originals_manifest.csv   # id, original_ext, original_bytes, original_title
+```
+The original PDFs/HTML (403 MB) are not needed: sizes and titles come from the manifest. If you have them, put them in `data_raw/Original/` and they are used instead.
 
-## Setup (Windows PowerShell)
+## Setup (Kiro / Linux)
 
-```powershell
-py -m venv .venv
-.venv\Scripts\Activate.ps1          # if blocked: Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```bash
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python preprocess/build_catalog.py   # builds data/catalog.sqlite (once)
 python run_all.py                    # cloud :9000, hub :8000, devices :8101-8104
 ```
+Windows: `py -m venv .venv` then `.venv\Scripts\Activate.ps1`.
 
-Hub dashboard: http://localhost:8000. Devices: http://localhost:8101 to 8104.
+Hub dashboard: http://localhost:8000. Devices: http://localhost:8101 to 8104 (in Kiro, open them from the PORTS tab).

@@ -48,7 +48,7 @@ A **hub** (one laptop or mini-server at the mission base) holds a **search index
 
 ## 3. What the data looks like (measured on our folder)
 
-Folder on Adrien's laptop: `C:\Users\adrie\Documents\D4FG\D4GC data\D4GC data\`
+Folder on Adrien's laptop: `C:\Users\adrie\Documents\D4FG\D4GC data\D4GC data\`. **In Kiro:** `./data_raw/` (data pack: Parsed + CSV + originals_manifest.csv; no originals).
 
 | Item | Value |
 |---|---|
@@ -243,7 +243,7 @@ access:
 
 ## 6. Preprocessing (`preprocess/build_catalog.py`), done once, off-site
 
-Input: `Original/`, `Parsed/`, `documentation.csv`. Output: `data/catalog.sqlite`, `data/embeddings.npy`, `data/chunk_ids.npy`, and `data/cloud_store/` (a copy of every original + text = the cloud's content).
+Input: `Parsed/`, `documentation.csv`, `originals_manifest.csv`, and `Original/` **only if present**. In the Kiro workspace the originals are not uploaded: take `original_ext`, `original_bytes` and `original_title` from the manifest, which was made from the real files (493 of 582 have a title). Output: `data/catalog.sqlite`, `data/embeddings.npy`, `data/chunk_ids.npy`, and `data/cloud_store/` (a copy of every original + text = the cloud's content).
 
 Step by step:
 
@@ -252,8 +252,7 @@ Step by step:
    - **Junk:** if 4 or more files share a hash, or the text is under 2,000 chars and contains "Get Involved", set `is_junk = 1`. Junk is kept in the catalog but never indexed, cached or shown.
    - **Duplicates:** for other identical hashes, keep the first ID and set `duplicate_of` on the others.
 3. **Title.**
-   - For HTML originals, use `<title>` from BeautifulSoup and strip " | MSF" style suffixes.
-   - For PDFs, use the `pypdf` metadata title if it is longer than 5 chars.
+   - Use `original_title` from the manifest (already taken from the HTML `<title>` or the PDF metadata) and strip " | MSF" style suffixes. If `Original/` exists, it can be read the same way.
    - Otherwise use the first Markdown heading, or else the first non-empty line with bullet marks removed. Cut to 120 chars.
 4. **Group.** Map `genre` → primary group and secondary groups from config.
 5. **Countries.** Search the text (first 20,000 chars) for the aliases in `countries.json`. Store a list of ISO-2 codes, ordered by count, at most 5.
@@ -264,7 +263,7 @@ Step by step:
 8. **Chunks.** Split the text on blank lines and headings, then pack the pieces into chunks of about 1,200 chars with 150 chars of overlap. Keep the chunk order number. (Expect about 17,000 chunks in total.)
 9. **Full-text index.** Create the SQLite FTS5 tables (schema in 7.1) with `tokenize = 'unicode61 remove_diacritics 2'`, which works for en/fr/es and for space-separated Arabic words.
 10. **Embeddings (if enabled).** Embed the title plus summary as one "doc card" vector, and up to 40 chunks per document. That gives about 7,500 vectors of dimension 384. Normalise them and save as float16 (about 6 MB). This takes a few minutes on a laptop CPU, so print progress.
-11. **Copy to the cloud store:** `data/cloud_store/original/<id>.<ext>` and `data/cloud_store/text/<id>.md`.
+11. **Copy to the cloud store:** `data/cloud_store/text/<id>.md` and, if `Original/` exists, `data/cloud_store/original/<id>.<ext>`. Without originals, the cloud server generates a **placeholder file of exactly `original_bytes`** on the fly (an HTML page saying "Original of <title>, <size>", padded to the size). This keeps the size, cost and download-time logic realistic.
 12. **Print a report:** document count, junk and duplicate counts, docs per group, docs per language, and the share of docs with countries. Also print the index sizes (FTS DB, embeddings) in MB. These numbers go on a pitch slide.
 
 **Check:** `python preprocess/build_catalog.py` prints 582 docs, 18 junk, 3 duplicates, and 4 groups with the counts in Section 3, without errors.
@@ -525,7 +524,7 @@ Priorities: **P0 = must have for the demo**, **P1 = should have**, **P2 = nice t
 
 | Step | Time | Priority | What to build | Done when (check) |
 |---|---|---|---|---|
-| 0 | 10 min | P0 | Create the folders, `requirements.txt`, `config.yaml`, venv. Windows: `py -m venv .venv; .venv\Scripts\Activate.ps1; pip install -r requirements.txt` | `python -c "import fastapi, sqlite3; print(sqlite3.sqlite_version)"` works |
+| 0 | 10 min | P0 | Create the folders, `requirements.txt`, `config.yaml`, venv. Kiro/Linux: `python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt` | `python -c "import fastapi, sqlite3; print(sqlite3.sqlite_version)"` works |
 | 1 | 25 min | P0 | `preprocess/build_catalog.py` (Section 6). Start with `use_embeddings: false` and add embeddings after step 2 works | The report prints 582 docs / 18 junk / 3 duplicates / 4 groups |
 | 2 | 20 min | P0 | `common/search.py` + `hub/app.py` with `/status`, `/search`, `/catalog/*`, `/docs/*` | The two search checks in 8.1 pass |
 | 3 | 20 min | P0 | `hub/planner.py` + `/admin/budget` + `hub.html` storage panel and plan table | Moving the slider changes the core/reserve contents. At 150 MB, all clinical guidelines that fit are in core |
