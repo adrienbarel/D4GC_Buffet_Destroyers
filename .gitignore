@@ -1,0 +1,27 @@
+# --- MSF challenge data: NEVER commit (public repo, large files) ---
+data/
+D4GC data/
+*.zip
+*.pdf
+documentation.csv
+
+# generated indexes / models
+*.sqlite
+*.sqlite-*
+*.npy
+*.db
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# local settings / secrets
+.env
+config.local.yaml
+
+# OS / editor
+.DS_Store
+Thumbs.db

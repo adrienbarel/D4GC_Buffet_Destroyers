@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+httpx
+pyyaml
+numpy
+scikit-learn
+beautifulsoup4
+pypdf
+matplotlib
+# optional, large (~450 MB with torch). If install fails, set search.use_embeddings: false in config.yaml
+sentence-transformers

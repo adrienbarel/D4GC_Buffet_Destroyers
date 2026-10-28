@@ -1,0 +1,84 @@
+# Single source of truth. See docs/PROJECT_SPEC.md section 5.
+# Weights and link costs are DEMO PLACEHOLDERS, not MSF data.
+paths:
+  data_root: "C:/Users/adrie/Documents/D4FG/D4GC data/D4GC data"   # contains Original/ and Parsed/ (override with env D4GC_DATA_ROOT)
+  metadata_csv: "C:/Users/adrie/Documents/D4FG/documentation.csv"   # override with env D4GC_METADATA_CSV
+  work_dir: "./data"
+
+ports: { cloud: 9000, hub: 8000, devices_start: 8101 }
+
+mission:                      # mission profile = solves the "day one, no history" problem
+  name: "Demo mission - Sudan / South Sudan"
+  countries: ["SD", "SS"]
+  languages: ["en", "ar"]
+  staff: { medical: 6, field_ops: 3, communications: 1, admin_legal: 1 }
+
+devices:                      # simulated devices started by run_all.py
+  - { id: medical-1,  group: medical,        budget_mb: 25 }
+  - { id: fieldops-1, group: field_ops,      budget_mb: 25 }
+  - { id: comms-1,    group: communications, budget_mb: 25 }
+  - { id: admin-1,    group: admin_legal,    budget_mb: 25 }
+
+hub:
+  budget_mb: 150              # changed live with the slider in the hub UI
+  core_share: 0.7             # 70% of the originals budget = core tier, 30% = reserve tier
+  reserve_min_p_need: 0.05    # reserve tier ignores near-irrelevant docs
+
+groups:                       # genre -> primary group (Section 3); secondary listed separately
+  medical: ["Clinical Guideline Chapter", "Peer-reviewed Article", "Study Protocol",
+            "Scientific Publication Notice", "Scientific News", "Field Study",
+            "Operational Research Essay", "Research Policy", "Research Governance Document",
+            "Evaluation Methodology Guide"]
+  field_ops: ["Project Update", "Activity Report Chapter", "Report", "Evaluation Report",
+              "Timeline", "Voices from the Field", "First-person Field Account",
+              "Historical Case Study", "Summary"]
+  communications: ["Press Release", "Statement", "Interview", "Speech", "Opinion", "Op-Ed",
+                   "Advocacy Brief", "Critical Essay"]
+  admin_legal: ["Financial Report", "Legal Encyclopedia Entry"]
+secondary:
+  "Clinical Guideline Chapter": [field_ops]
+  "Project Update": [communications]
+  "Activity Report Chapter": [communications]
+  "Press Release": [field_ops]
+  "Statement": [field_ops]
+  "Legal Encyclopedia Entry": [field_ops, communications]
+relevance: { primary: 1.0, secondary: 0.3, other: 0.05 }
+
+urgency:                      # how bad it is to NOT have the doc when needed (1 = normal)
+  "Clinical Guideline Chapter": 3.0
+  "Study Protocol": 1.5
+  "Peer-reviewed Article": 1.2
+  default: 1.0
+
+boosts:
+  mission_country: 1.0        # +100% if the doc mentions a mission country
+  mission_language: 0.5       # +50% if the doc language is a mission language
+  popularity_half_life_days: 14
+
+links:                        # PLACEHOLDER costs, replace with real MSF numbers
+  internet:  { available_probability: 0.3, cost_per_mb: 0.0, seconds_per_mb: 4 }
+  satellite: { cost_per_mb: 5.0, seconds_per_mb: 20 }      # BGAN/VSAT-type data link
+  courier:   { fixed_cost: 60.0, fixed_hours: 6 }          # someone drives to another hub
+  relay:     { max_payload_bytes: 51, hop_delay_s: 2, ttl: 3 }
+
+search:
+  use_embeddings: true
+  model: "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+  chunk_chars: 1200
+  chunk_overlap: 150
+  max_embedded_chunks_per_doc: 40
+  bm25_top_k: 50
+  vector_top_k: 50
+  rrf_k: 60
+  min_confidence: 0.35        # below this, show "no confident match" (limits false positives)
+  boosts:                     # Section 8.1 step 4
+    same_group: 1.3
+    secondary_group: 1.1
+    guideline_clinical_intent: 1.5
+    admin_clinical_intent: 0.5
+  clinical_intent_words: [treatment, dose, dosage, diagnosis, management, protocol, symptoms,
+                          child, adult, traitement, posologie, diagnostic, tratamiento, dosis, "علاج", "جرعة"]
+
+access:
+  out_of_group_policy: "log_and_allow"   # or "needs_approval"
+  restricted_genres: ["Financial Report"] # always needs approval outside admin_legal
