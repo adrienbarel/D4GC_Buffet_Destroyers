@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pulse-RAG · MSF Field Knowledge Hub</title>
+<link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+<header>
+  <div><div class="logo">Pulse<span>-RAG</span></div><div class="sub" id="mission">MSF Field Knowledge Hub</div></div>
+  <div class="sub" id="me">Not signed in</div>
+  <div class="toggle" id="tInternet" role="switch" tabindex="0" aria-checked="true"><span class="dot"></span>Internet</div>
+  <div class="toggle" id="tRelay" role="switch" tabindex="0" aria-checked="true"><span class="dot"></span>LoRa relay</div>
+  <div class="toggle" id="tHubC" role="switch" tabindex="0" aria-checked="false"><span class="dot"></span>Hub C has internet</div>
+  <div class="spacer"></div>
+  <span class="sub" id="offline">● Local hub · no cloud needed for search</span>
+  <button id="emBtn" aria-pressed="false">EMERGENCY</button>
+</header>
+<div class="em-banner" role="status">EMERGENCY MODE: extractive answers only, exact source passages with citations. Never generated instructions. <button class="ghost" id="emExit" style="margin-left:12px">Exit Emergency Mode</button></div>
+<nav>
+  <button class="active" data-tab="search">Search</button>
+  <button data-tab="storage">Hub storage (cost model)</button>
+  <button data-tab="requests">Requests &amp; LoRa relay</button>
+  <button data-tab="access">Access log</button>
+  <button data-tab="volunteers">Volunteers (admin)</button>
+</nav>
+<main>
+  <!-- SEARCH -->
+  <section class="tab active" id="tab-search">
+    <form class="searchbar" id="sform">
+      <label class="sr" for="q">Search</label>
+      <input type="text" id="q" placeholder="e.g. treatment of pulmonary tuberculosis · tuberculose pulmonaire · علاج الكوليرا" autocomplete="off">
+      <select id="langMode" aria-label="Language mode">
+        <option value="auto">Language: automatic</option>
+        <option value="only">Same language only</option>
+        <option value="all">All languages</option>
+      </select>
+      <button type="submit">Search</button>
+    </form>
+    <div class="meta" id="smeta">Try the demo queries:
+      <a href="#" class="ex">treatment of pulmonary tuberculosis</a> ·
+      <a href="#" class="ex">child malaria treatment</a> ·
+      <a href="#" class="ex">paramedics killed in Lebanon</a> ·
+      <a href="#" class="ex">tuberculose pulmonaire</a> ·
+      <a href="#" class="ex">علاج الكوليرا</a> ·
+      <a href="#" class="ex">stock price of Apple</a> ·
+      <a href="#" class="ex">financial report 2013</a></div>
+    <div class="grid">
+      <div id="results"></div>
+      <div id="reader" class="card" hidden></div>
+    </div>
+  </section>
+
+  <!-- STORAGE -->
+  <section class="tab" id="tab-storage">
+    <div class="card">
+      <label for="budget"><b>Hub storage budget: <span id="budgetVal">150</span> MB</b></label>
+      <input type="range" id="budget" min="20" max="450" step="5" value="150" style="width:100%">
+      <div class="bar" id="sbar"></div>
+      <div class="legend sub"><span style="background:#0f2747"></span>Always: index + all text
+        <span style="background:#0e8a88"></span>Core (best value per MB) <span style="background:#d08a1a"></span>Reserve (expensive to fetch)
+        <span style="background:#c9d2dc"></span>Free</div>
+      <p class="warn" id="pwarn"></p>
+      <div id="pgroups" class="sub"></div>
+    </div>
+    <div class="card">
+      <div class="searchbar"><input type="text" id="pq" placeholder="Filter plan by title or genre">
+        <select id="ptier"><option value="">All tiers</option><option>core</option><option>reserve</option><option value="text_only">text only</option></select></div>
+      <table><thead><tr><th>Doc</th><th>Title</th><th>Group</th><th>MB</th><th>p_need</th><th>cost if missing</th><th>priority/MB</th><th>Tier</th><th>Why</th></tr></thead><tbody id="ptable"></tbody></table>
+      <p class="sub" id="pcount"></p>
+    </div>
+  </section>
+
+  <!-- REQUESTS -->
+  <section class="tab" id="tab-requests">
+    <div class="row2">
+      <div><h3>Requests</h3><div id="reqs" class="sub">No requests yet. Open a result and click "Request original".</div></div>
+      <div>
+        <h3>Volunteer LoRa relay (simulated, ≤ 51-byte messages)</h3>
+        <div class="card relay">
+          <svg viewBox="0 0 520 170" width="100%" aria-label="Relay network diagram">
+            <line x1="50" y1="60" x2="160" y2="60" stroke="#9bb"/><line x1="160" y1="60" x2="280" y2="60" stroke="#9bb"/>
+            <line x1="280" y1="60" x2="420" y2="60" stroke="#9bb"/><line x1="280" y1="60" x2="340" y2="130" stroke="#9bb"/>
+            <line x1="340" y1="130" x2="470" y2="130" stroke="#9bb"/>
+            <g id="n-A"><circle class="node" cx="50" cy="60" r="20"/><text x="42" y="64">A</text><text x="20" y="100">Hub A (us)</text></g>
+            <g id="n-R1"><circle class="node" cx="160" cy="60" r="16"/><text x="150" y="64">R1</text></g>
+            <g id="n-R2"><circle class="node" cx="280" cy="60" r="16"/><text x="270" y="64">R2</text></g>
+            <g id="n-B"><circle class="node" cx="420" cy="60" r="20"/><text x="414" y="64">B</text><text x="380" y="30">Hub B (cache)</text></g>
+            <g id="n-R3"><circle class="node" cx="340" cy="130" r="16"/><text x="330" y="134">R3</text></g>
+            <g id="n-C"><circle class="node" cx="470" cy="130" r="20"/><text x="464" y="134">C</text><text x="430" y="165">Hub C (internet?)</text></g>
+          </svg>
+        </div>
+        <table><thead><tr><th>Time</th><th>Hop</th><th>Type</th><th>Bytes</th><th>Payload (hex)</th></tr></thead><tbody id="rlog"></tbody></table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ACCESS -->
+  <section class="tab" id="tab-access">
+    <p class="sub">Every device can see every document card. Opening a document outside the device's group is logged; restricted genres (Financial Report) need hub-operator approval.</p>
+    <table><thead><tr><th>Time</th><th>Device</th><th>Doc</th><th>Action</th><th>Allowed</th><th>Reason</th></tr></thead><tbody id="alog"></tbody></table>
+  </section>
+
+  <!-- VOLUNTEERS (admin only) -->
+  <section class="tab" id="tab-volunteers">
+    <div id="admLogin" class="card" style="max-width:380px">
+      <b>Admin sign-in</b>
+      <p class="sub">Volunteer management needs an admin account.</p>
+      <label class="sr" for="au">Admin username</label><input type="text" id="au" placeholder="admin username" autocomplete="username" style="width:100%">
+      <label class="sr" for="ap">PIN</label><input type="password" id="ap" placeholder="PIN" inputmode="numeric" autocomplete="current-password" style="width:100%;margin-top:6px">
+      <button id="admLoginBtn" style="margin-top:8px">Sign in as admin</button>
+      <p class="err" id="admErr" role="alert"></p>
+    </div>
+    <div id="admPanel" hidden>
+      <div class="card">
+        Demo clock: <b id="vNow"></b> (offset <span id="vOff"></span> days) <button id="advClock">Advance clock +7 days</button>
+        · Power: <select id="vPower" aria-label="Simulated power"><option>mains</option><option>battery</option><option>outage</option><option>unknown</option></select>
+        <span class="sim" id="vPowerLbl"></span> <span class="sub">(internet is a separate toggle)</span>
+        <button class="ghost" id="admLogout">Admin log out</button>
+        <div id="vSecret"></div>
+      </div>
+      <table><thead><tr><th>Name</th><th>Group</th><th>Status</th><th>Mission end</th><th>Next rotation</th><th>Flags</th><th>Actions</th></tr></thead><tbody id="vtable"></tbody></table>
+      <h3>Last 20 auth events</h3>
+      <table><thead><tr><th>Time (demo clock)</th><th>Volunteer</th><th>Event</th><th>OK</th><th>Detail</th></tr></thead><tbody id="vlog"></tbody></table>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+// Works at http://127.0.0.1:8000/ AND behind a port-forwarding sub-path such as /proxy/8000/
+const BASE = (() => {
+  const p = location.pathname;
+  if (p.endsWith("/")) return p;
+  if (/\.[a-z]+$/i.test(p)) return p.replace(/[^/]*$/, "");
+  return p + "/";
+})();
+const api = async (path, body) => {
+  const url = BASE + path.replace(/^\//, "");
+  const r = await fetch(url, body ? {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)} : {});
+  if (!r.ok) { const e = new Error(r.status); e.status = r.status; e.body = await r.text(); throw e; }
+  return (r.headers.get("content-type")||"").includes("json") ? r.json() : r.text();
+};
+let ST = null, emergency = false, lastTerms = [];
+const role = () => $("#role").value || "doctor";
+const AV = { "original_on_hub (core)":["green","🟢 Original on hub (core)"], "original_on_hub (reserve)":["green","🟢 Original on hub (reserve)"],
+  "original_on_hub (fetched)":["green","🟢 Original on hub (fetched)"], "text_on_hub_original_in_cloud":["amber","🟠 Text on hub · original in cloud"] };
+const ACC = { allowed:["teal","✔ Your group"], log:["blue","👁 Outside your group (logged)"], needs_approval:["red","🔒 Needs approval"] };
+
+function highlight(text, terms) {
+  let h = esc(text);
+  terms.filter(t => t.length > 2).forEach(t => {
+    const re = new RegExp("(" + t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "giu");
+    h = h.replace(re, "<mark>$1</mark>");
+  });
+  return h;
+}
+
+// ---------------------------------------------------------------- status + toggles
+async function refreshStatus() {
+  try { ST = await api("/status"); }
+  catch (e) { $("#offline").textContent = "⚠ Cannot reach the hub API at " + BASE; return; }
+  $("#mission").textContent = ST.mission + " · " + ST.docs_indexed + " documents indexed";
+  setToggle("#tInternet", ST.internet); setToggle("#tRelay", ST.relay); setToggle("#tHubC", ST.hub_c_internet);
+  $("#offline").textContent = ST.internet ? "● Internet ON · search is local anyway" : "● OFFLINE · search still works (local index)";
+  drawBar(ST.plan);
+}
+function setToggle(sel, on) { const el = $(sel); el.classList.toggle("on", on); el.classList.toggle("off", !on); el.setAttribute("aria-checked", on); }
+function bindToggle(sel, key) {
+  const fire = async () => { const on = !$(sel).classList.contains("on"); await api("/admin/connectivity", {[key]: on}); refreshStatus(); };
+  $(sel).addEventListener("click", fire);
+  $(sel).addEventListener("keydown", e => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); fire(); } });
+}
+
+// ---------------------------------------------------------------- search
+function showError(e) {
+  if (e.status === 401) { $("#results").innerHTML = authMsg(e); loadMe(); return; }
+  $("#results").innerHTML = `<div class="card warn"><b>Request failed</b> (${esc(e.status || e.message)}). ` +
+    `Is <code>python run_all.py</code> running? API base: <code>${esc(BASE)}</code><br>${esc((e.body || "").slice(0, 300))}</div>`;
+}
+async function doSearch(q) {
+  if (!q.trim()) return;
+  $("#results").innerHTML = '<p class="sub">Searching…</p>';
+  try { await (emergency ? doEmergency(q) : runSearch(q)); } catch (e) { console.error(e); showError(e); }
+}
+async function runSearch(q) {
+  const r = await api("/search", {q, role: role(), lang_mode: $("#langMode").value});
+  lastTerms = r.terms;
+  const L = r.language;
+  $("#smeta").innerHTML = `Query language: <b>${L.lang ? L.lang.toUpperCase() : "uncertain"}</b> (${esc(L.method)}${L.lang ? ", " + L.confidence : ""}) · ` +
+    `${r.candidates ?? 0} candidates · ${r.results.length} confident results · ${r.latency_ms} ms on this laptop` +
+    (r.emergency_intent ? ' · <b style="color:var(--red)">Emergency words detected: use the EMERGENCY button</b>' : "");
+  let html = "";
+  if (r.no_confident_match) {
+    html += `<div class="card"><b>No confident match.</b> <span class="sub">The query terms are not well covered by any document. This is how we limit false positives.</span></div>`;
+    if (r.maybe.length) html += `<p class="sub">Maybe (low confidence):</p>` + r.maybe.map(card).join("");
+  } else html += r.results.map(card).join("");
+  $("#results").innerHTML = html;
+}
+
+function card(x) {
+  const [ac, at] = AV[x.availability] || ["", x.availability];
+  const [cc, ct] = ACC[x.access] || ["", x.access];
+  const bd = x.breakdown;
+  return `<div class="card">
+    <div class="score">${x.score_pct}<small>relative score</small></div>
+    <h3><a href="#" data-open="${x.doc_id}">${esc(x.title)}</a></h3>
+    <div class="badges">
+      <span class="b">${esc(x.genre)}</span><span class="b">${esc(x.group)}</span>
+      <span class="b">${x.language.toUpperCase()}</span>
+      ${x.language_label ? `<span class="b blue">🌐 ${esc(x.language_label)}</span>` : ""}
+      <span class="b ${ac}">${at}</span><span class="b ${cc}">${ct}</span>
+      ${x.countries_mentioned.length ? `<span class="b">mentions ${x.countries_mentioned.join(", ")}</span>` : ""}
+    </div>
+    <div class="snip" dir="auto">${highlight(x.snippet, lastTerms)}</div>
+    <div class="sub">${esc(x.doc_id)}.${esc(x.original_ext)} · ${x.original_mb} MB${x.section ? " · section: " + esc(x.section) : ""} · chunk ${x.chunk_ord ?? "–"}</div>
+    <details><summary>Why this rank?</summary>
+      <table>
+        <tr><td>BM25 rank (chunks)</td><td>${bd.bm25_chunk_rank ?? "–"}</td><td>BM25 rank (title/summary card)</td><td>${bd.bm25_card_rank ?? "–"}</td></tr>
+        <tr><td>Reciprocal Rank Fusion</td><td>${bd.rrf}</td><td>Text relevance (0–1)</td><td>${bd.text_relevance}</td></tr>
+        <tr><td>Boosts</td><td colspan="3">${bd.boosts.length ? bd.boosts.map(b => esc(b[0]) + " ×" + b[1]).join(", ") : "none"}</td></tr>
+        <tr><td>Same language</td><td>${bd.language_match ? "yes ×" + bd.language_bonus : "no"}</td><td>Confidence (term coverage)</td><td>${bd.confidence}</td></tr>
+      </table>
+      ${x.warnings.map(w => `<div class="warn">⚠ ${esc(w)}</div>`).join("")}
+    </details>
+  </div>`;
+}
+
+async function openDoc(id) {
+  const rd = $("#reader"); rd.hidden = false;
+  rd.innerHTML = '<p class="sub">Opening…</p>';
+  try {
+    const text = await api(`/docs/${id}/text?role=${role()}`);
+    rd.innerHTML = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <b>${esc(id)}</b><span class="spacer"></span>
+        <button class="ghost" data-req="${id}">Request original</button>
+        <button class="ghost" onclick="document.getElementById('reader').hidden=true">Close</button></div>
+      <p class="sub">Text served by the hub (all text is always on the hub, ${ST ? "" : ""}even when the original is missing).</p>
+      <pre dir="auto">${highlight(text.slice(0, 60000), lastTerms)}${text.length > 60000 ? "\n…" : ""}</pre>`;
+  } catch (e) {
+    if (e.status === 403) rd.innerHTML = `<p><b>🔒 Restricted document.</b> Financial Reports outside the admin/legal group need approval from the hub operator.</p>
+      <button data-access="${id}">Request access</button> <span class="sub" id="accmsg"></span>`;
+    else if (e.status === 401) rd.innerHTML = authMsg(e);
+    else rd.innerHTML = `<p class="warn">Could not open: ${esc(e.message)}</p>`;
+  }
+}
+
+// ---------------------------------------------------------------- emergency
+async function doEmergency(q) {
+  const r = await api("/emergency", {q, role: role()});
+  const c = r.closest_unverified_source;
+  let html = `<div class="emcard"><div class="msg">⚠ ${esc(r.message)}</div>
+    <div class="sub">Domain: <b>${esc(r.group)}</b> · Query language: ${r.language && r.language.lang ? r.language.lang.toUpperCase() : "uncertain"} ·
+      Validation records in this corpus: <b>none</b> (the CSV has no approval, date or applicability data, so nothing is presented as an approved protocol).</div>`;
+  if (r.note) html += `<p class="warn">${esc(r.note)}</p>`;
+  if (c) html += `<h3 style="margin:12px 0 4px">Closest source: UNVERIFIED</h3>
+    <div class="badges"><span class="b red">${esc(c.validation)}</span><span class="b">${esc(c.genre)}</span><span class="b">${c.language.toUpperCase()}</span>
+      ${c.language_label ? `<span class="b blue">🌐 ${esc(c.language_label)}</span>` : ""}<span class="b">Revision date: unknown</span></div>
+    <b>${esc(c.title)}</b>
+    <div class="excerpt" dir="auto">${highlight(c.excerpt, (q.match(/[\p{L}\p{N}]+/gu) || []))}</div>
+    <p class="sub">Exact excerpt, unmodified. Citation: <b>${esc(c.citation.file)}</b> · section “${esc(c.citation.section)}” · chunk ${c.citation.chunk} · page ${esc(c.citation.page)}</p>
+    <button data-open="${c.doc_id}">Open full document</button>`;
+  html += `</div>`;
+  $("#results").innerHTML = html;
+  $("#smeta").textContent = "Emergency Mode: role-scoped, extractive retrieval.";
+}
+function setEmergency(on) {
+  emergency = on; document.body.classList.toggle("em", on); $("#emBtn").setAttribute("aria-pressed", on);
+  $("#q").placeholder = on ? "Emergency: e.g. severe dehydration child · cholera outbreak · generator failure" : "e.g. treatment of pulmonary tuberculosis";
+  $("#results").innerHTML = ""; $("#q").focus();
+}
+
+// ---------------------------------------------------------------- storage plan
+function drawBar(s) {
+  const b = s.budget_mb, pct = v => Math.max(0, 100 * v / b);
+  const parts = [["#0f2747", Math.min(s.always_mb, b), "always " + s.always_mb + " MB"], ["#0e8a88", s.core_mb, "core " + s.core_mb], ["#d08a1a", s.reserve_mb, "reserve " + s.reserve_mb], ["#c9d2dc", s.free_mb, ""]];
+  $("#sbar").innerHTML = parts.map(([c, v, l]) => `<div style="background:${c};width:${pct(v)}%" title="${l}">${pct(v) > 9 ? l : ""}</div>`).join("");
+  $("#pwarn").textContent = s.warning || "";
+  const t = s.docs_per_tier;
+  $("#pgroups").innerHTML = `Originals cached: <b>${(t.core||0)} core</b> + <b>${(t.reserve||0)} reserve</b>, ${(t.text_only||0)} text only. Per group: ` +
+    Object.entries(s.per_group).map(([g, c]) => `${g}: ${c.core||0}/${c.reserve||0}/${c.text_only||0}`).join(" · ") + " (core/reserve/text)";
+}
+async function loadPlan() {
+  const p = await api(`/admin/plan?tier=${$("#ptier").value}&q=${encodeURIComponent($("#pq").value)}&limit=150`);
+  drawBar(p.summary);
+  $("#ptable").innerHTML = p.rows.map(r => `<tr><td class="mono">${r.doc_id}</td><td>${esc((r.title||"").slice(0, 60))}</td><td>${r.group}</td>
+    <td>${r.size_mb.toFixed(2)}</td><td>${r.p_need.toFixed(2)}</td><td>${r.cost_missing.toFixed(1)}</td><td>${r.priority.toFixed(2)}</td>
+    <td><span class="b ${r.tier === "core" ? "teal" : r.tier === "reserve" ? "amber" : ""}">${r.tier}</span></td><td class="sub">${esc(r.reason)}</td></tr>`).join("");
+  $("#pcount").textContent = `Showing ${p.rows.length} of ${p.total}. Weights and link costs are demo placeholders (config.yaml), to be tuned with MSF data.`;
+}
+let budgetTimer;
+$("#budget").addEventListener("input", e => {
+  $("#budgetVal").textContent = e.target.value;
+  clearTimeout(budgetTimer);
+  budgetTimer = setTimeout(async () => { await api("/admin/budget", {budget_mb: +e.target.value}); loadPlan(); }, 200);
+});
+$("#pq").addEventListener("input", () => loadPlan()); $("#ptier").addEventListener("change", loadPlan);
+
+// ---------------------------------------------------------------- requests + relay
+const STATUS_COLOR = {DELIVERED:"green", APPROVED:"green", DOWNLOADING:"blue", QUEUED:"amber", OPTIONS_READY:"amber", AWAITING_APPROVAL:"red", REJECTED:"red", COURIER_TICKET:"blue"};
+async function loadRequests() {
+  const reqs = await api("/requests");
+  if (!reqs.length) return;
+  $("#reqs").innerHTML = reqs.map(r => `<div class="card">
+    <b>#${r.id} ${esc((r.title||"").slice(0, 70))}</b> <span class="b ${STATUS_COLOR[r.status]||""}">${r.status}</span>
+    <div class="sub">${esc(r.device)} · wants ${r.want} · ${r.size_mb} MB ${r.path ? "· via " + r.path : ""}</div>
+    ${r.status === "DOWNLOADING" ? `<div class="progress"><div style="width:${Math.round(r.progress*100)}%"></div></div>` : ""}
+    ${r.status === "OPTIONS_READY" ? `<table><tr><th>Path</th><th>ETA</th><th>Cost</th><th></th></tr>${r.options.map(o => `<tr>
+        <td>${o.path}${o.note ? `<div class="sub">${esc(o.note)}</div>` : ""}</td><td>${esc(o.eta)}</td><td>${o.cost}</td>
+        <td><button class="${o.recommended ? "" : "ghost"}" data-choose="${r.id}" data-path="${o.path}">${o.recommended ? "★ Recommended" : "Choose"}</button></td></tr>`).join("")}</table>` : ""}
+    ${r.relay ? `<div class="sub">LoRa: ${r.relay.messages} messages, ${r.relay.bytes_on_air} bytes on air · Hub B has it: ${r.relay.hub_b_has_original ? "yes" : "no"} · Hub C has internet: ${r.relay.hub_c_has_internet ? "yes" : "no"}</div>` : ""}
+    ${r.status === "AWAITING_APPROVAL" ? `<button data-decide="${r.id}" data-d="approve">Approve</button> <button class="ghost" data-decide="${r.id}" data-d="reject">Reject</button>` : ""}
+    ${r.ticket ? `<div class="mono">${esc(JSON.stringify(r.ticket))}</div>` : ""}
+    <details><summary>Log</summary>${r.log.map(l => `<div class="sub">${l.ts} ${esc(l.msg)}</div>`).join("")}</details></div>`).join("");
+}
+let seenMsgs = 0;
+async function loadRelay() {
+  const log = await api("/relay/log");
+  $("#rlog").innerHTML = log.map(m => `<tr><td>${m.ts} <span class="sub">${m.t}</span></td><td>${m.src} → ${m.dst}</td><td>${m.type}</td><td><b>${m.bytes} B</b></td><td class="mono">${m.hex}</td></tr>`).join("");
+  if (log.length > seenMsgs) { animate(log.slice(0, log.length - seenMsgs).reverse()); seenMsgs = log.length; }
+}
+function animate(msgs) {
+  msgs.forEach((m, i) => setTimeout(() => {
+    const n = document.querySelector(`#n-${m.dst} circle`); if (!n) return;
+    n.classList.add("flash"); setTimeout(() => n.classList.remove("flash"), 450);
+  }, i * 500));
+}
+async function loadAccess() {
+  const rows = await api("/access/log");
+  $("#alog").innerHTML = rows.map(a => `<tr><td>${a.ts}</td><td>${esc(a.device)}</td><td>${a.doc_id} <span class="sub">${esc((a.title||"").slice(0,40))}</span></td>
+    <td>${a.action}</td><td>${a.allowed ? "✔" : "✖"}</td><td class="sub">${esc(a.reason)}</td></tr>`).join("");
+}
+
+// ---------------------------------------------------------------- events
+document.addEventListener("click", async e => {
+  const t = e.target.closest("[data-open],[data-req],[data-access],[data-choose],[data-decide],.ex,nav button");
+  if (!t) return;
+  if (t.matches("nav button")) {
+    document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b === t));
+    document.querySelectorAll(".tab").forEach(s => s.classList.toggle("active", s.id === "tab-" + t.dataset.tab));
+    if (t.dataset.tab === "storage") loadPlan();
+    if (t.dataset.tab === "requests") { loadRequests(); loadRelay(); }
+    if (t.dataset.tab === "access") loadAccess();
+    if (t.dataset.tab === "volunteers") loadVols();
+    return;
+  }
+  e.preventDefault();
+  if (t.classList.contains("ex")) { $("#q").value = t.textContent; doSearch(t.textContent); }
+  else if (t.dataset.open) openDoc(t.dataset.open);
+  else if (t.dataset.req) {
+    const r = await api("/requests", {doc_id: t.dataset.req, role: role(), want: "original"});
+    t.textContent = "Request #" + r.id + ": " + r.status + " (see Requests tab)";
+  } else if (t.dataset.access) {
+    const r = await api("/requests", {doc_id: t.dataset.access, role: role(), want: "access"});
+    $("#accmsg").textContent = "Request #" + r.id + " " + r.status + ": approve it in the Requests tab.";
+  } else if (t.dataset.choose) { await api(`/requests/${t.dataset.choose}/choose`, {path: t.dataset.path}); loadRequests(); }
+  else if (t.dataset.decide) { await api(`/requests/${t.dataset.decide}/${t.dataset.d}`, {}); loadRequests(); }
+});
+$("#sform").addEventListener("submit", e => { e.preventDefault(); doSearch($("#q").value); });
+$("#emBtn").addEventListener("click", () => setEmergency(!emergency));
+$("#emExit").addEventListener("click", () => setEmergency(false));
+// ---------------------------------------------------------------- volunteer session + admin panel
+let ME = null;
+const detailOf = e => { try { return JSON.parse(e.body).detail; } catch (_) { return ""; } };
+const authMsg = e => `<div class="card"><b>${esc(detailOf(e) || "Not signed in")}</b> <a href="${BASE}login">Sign in</a></div>`;
+async function loadMe() {
+  try {
+    ME = (await api("/auth/me")).volunteer;
+    $("#me").innerHTML = `<b>${esc(ME.full_name)}</b> · ${esc(ME.grp)} · mission ${esc(ME.status)} until ${ME.mission_end.slice(0, 10)}` +
+      ` · next rotation ${(ME.next_rotation || "–").slice(0, 10)} <button class="ghost" id="logoutBtn">Log out</button>`;
+  } catch (e) {
+    ME = null;
+    const d = detailOf(e);
+    $("#me").innerHTML = (d && d !== "Not signed in" ? `<span class="warn">${esc(d)}</span> ` : "Not signed in · ") + `<a href="${BASE}login">Sign in</a>`;
+  }
+}
+const vbtn = (v, a, l) => `<button class="ghost" data-vact="${a}" data-vid="${v.volunteer_id}">${l}</button> `;
+async function loadVols() {
+  let d;
+  try { d = await api("/admin/volunteers"); } catch (e) { $("#admLogin").hidden = false; $("#admPanel").hidden = true; return; }
+  $("#admLogin").hidden = true; $("#admPanel").hidden = false;
+  $("#vNow").textContent = d.now.replace("T", " ").slice(0, 16) + " UTC"; $("#vOff").textContent = d.clock_offset_days;
+  $("#vPower").value = d.power; $("#vPowerLbl").textContent = d.power_label;
+  $("#vtable").innerHTML = d.volunteers.map(v => `<tr><td><b>${esc(v.full_name)}</b><div class="sub mono">${esc(v.username || "–")} · ${v.role} · ${v.sessions} session(s)</div></td>
+    <td>${v.grp}</td><td><span class="b ${v.status === "active" ? "green" : "red"}">${v.status}</span></td><td>${v.mission_end.slice(0, 10)}</td>
+    <td>${(v.next_rotation || "–").slice(0, 10)}</td>
+    <td>${v.rotation_pending ? '<span class="b amber">pending (power)</span> ' : ""}${v.awaiting_delivery ? '<span class="b blue">awaiting delivery</span>' : ""}</td>
+    <td>${vbtn(v, "activate", "Activate")}${vbtn(v, "deactivate", "Deactivate")}${vbtn(v, "extend", "Extend +30 d")}${vbtn(v, "rotate", "Rotate now")}
+      ${v.reveal_available ? vbtn(v, "reveal", "🔑 Show new credential (once)") : ""}${v.awaiting_delivery ? vbtn(v, "confirm", "Confirmed delivered") : ""}</td></tr>`).join("");
+  $("#vlog").innerHTML = d.auth_log.map(a => `<tr><td>${a.ts.replace("T", " ").slice(0, 19)}</td><td>${esc(a.volunteer_id || "–")}</td>
+    <td>${a.event}</td><td>${a.ok ? "✔" : "✖"}</td><td class="sub">${esc(a.detail || "")}</td></tr>`).join("");
+}
+document.addEventListener("click", async e => {
+  const t = e.target.closest("[data-vact],#advClock,#admLogout,#admLoginBtn,#logoutBtn");
+  if (!t) return;
+  e.preventDefault();
+  try {
+    if (t.id === "admLoginBtn") { await api("/auth/login", {username: $("#au").value, pin: $("#ap").value, scope: "admin"}); $("#admErr").textContent = ""; $("#ap").value = ""; }
+    else if (t.id === "admLogout") await api("/auth/logout?scope=admin", {});
+    else if (t.id === "logoutBtn") await api("/auth/logout", {});
+    else if (t.id === "advClock") await api("/admin/clock", {days: 7});
+    else {
+      const r = await api(`/admin/volunteers/${t.dataset.vid}/${t.dataset.vact}`, {});
+      if (t.dataset.vact === "reveal") $("#vSecret").innerHTML = `<p>Hand to the volunteer. Shown only once:</p><div class="secret">username ${esc(r.username)} · PIN ${esc(r.pin)}</div>`;
+    }
+  } catch (x) {
+    if (t.id === "admLoginBtn") $("#admErr").textContent = detailOf(x) || "Error"; else alert(detailOf(x) || ("Error " + x.status));
+  }
+  loadMe(); loadVols();
+});
+$("#vPower").addEventListener("change", async e => { await api("/admin/power", {status: e.target.value}); loadVols(); });
+loadMe();
+bindToggle("#tInternet", "internet"); bindToggle("#tRelay", "relay"); bindToggle("#tHubC", "hub_c_internet");
+refreshStatus();
+setInterval(() => {
+  refreshStatus();
+  if ($("#tab-requests").classList.contains("active")) { loadRequests(); loadRelay(); }
+  if ($("#tab-access").classList.contains("active")) loadAccess();
+}, 2000);
+</script>
+</body>
+</html>

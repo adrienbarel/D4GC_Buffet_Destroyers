@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in · Pulse-RAG</title>
+<link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+<main class="login-wrap">
+  <form class="card login-card" id="lform">
+    <div class="logo" style="font-size:24px">Pulse<span>-RAG</span></div>
+    <p class="sub">MSF Field Knowledge Hub · volunteer sign-in · works offline on the mission network</p>
+    <label for="u">Username</label>
+    <input type="text" id="u" autocomplete="username" autocapitalize="none" required>
+    <label for="p">PIN</label>
+    <input type="password" id="p" inputmode="numeric" autocomplete="current-password" maxlength="12" required>
+    <button type="submit" style="width:100%;margin-top:12px">Sign in</button>
+    <p class="err" id="err" role="alert" aria-live="assertive"></p>
+  </form>
+</main>
+<script>
+const BASE = location.pathname.replace(/login(\.html)?$/, "").replace(/static\/$/, "");
+document.getElementById("lform").addEventListener("submit", async e => {
+  e.preventDefault();
+  const err = document.getElementById("err"); err.textContent = "";
+  try {
+    const r = await fetch(BASE + "auth/login", {method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({username: document.getElementById("u").value, pin: document.getElementById("p").value})});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { err.textContent = j.detail || ("Error " + r.status); return; }
+    location.href = BASE;
+  } catch (x) { err.textContent = "Cannot reach the hub."; }
+});
+</script>
+</body>
+</html>

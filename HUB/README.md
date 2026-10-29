@@ -20,6 +20,24 @@ data_raw/originals_manifest.csv   # id, original_ext, original_bytes, original_t
 ```
 The original PDFs/HTML (403 MB) are not needed: sizes and titles come from the manifest. If you have them, put them in `data_raw/Original/` and they are used instead.
 
+## Demo quick start (proof of concept)
+
+```bash
+source .venv/bin/activate                 # Windows: .venv\Scripts\Activate.ps1
+python preprocess/build_catalog.py        # ~10 s, builds data/catalog.sqlite from data_raw/
+python run_all.py                         # hub + simulated devices/cloud/LoRa on http://127.0.0.1:8000
+```
+In Kiro, open port 8000 from the PORTS tab.
+
+What the demo shows (one process; devices, cloud downloads and the LoRa relay are simulated):
+- **Search**: BM25 on chunks + doc cards, Reciprocal Rank Fusion, group/intent boosts, same-language bonus, confidence filter ("no confident match"), per-result "Why this rank?" and honest metadata warnings. Role selector = the 4 staff devices.
+- **Access control**: out-of-group opens are logged; Financial Reports need hub-operator approval (Requests tab).
+- **Emergency Mode**: extractive only. Shows the exact source passage and citation, always labelled UNVERIFIED (the dataset has no validation records), with the safe fallback message.
+- **Hub storage**: budget slider (20–450 MB) runs the cost model; core/reserve tiers with a one-line reason per document.
+- **Requests & LoRa relay**: internet ON → simulated download with progress; internet OFF → text still readable, 15-byte WHO_HAS flooded over the relay, options with ETA and cost.
+
+Not built yet: embeddings (cross-language search), separate device processes, login/JWT, voice, evaluation scripts.
+
 ## Setup (Kiro / Linux)
 
 ```bash

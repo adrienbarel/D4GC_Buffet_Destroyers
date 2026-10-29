@@ -2,13 +2,13 @@
 
 Do the tasks in order. Each task ends with a check: run it and show the output before marking the task done. P0 = must have for the demo, P1 = should have, P2 = nice to have.
 
-- [ ] 1. Project setup (P0, ~10 min)
+- [x] 1. Project setup (P0, ~10 min)
   - Create the folders from structure.md with empty `__init__.py` files.
   - Write common/config.py: load config.yaml, apply env overrides D4GC_DATA_ROOT / D4GC_METADATA_CSV, and resolve paths with pathlib.
   - Check: `python -c "from common.config import load; c=load(); print(c['paths'])"` prints existing paths.
   - _Requirements: all_
 
-- [ ] 2. Preprocessing and catalog (P0, ~25 min)
+- [x] 2. Preprocessing and catalog (P0, ~25 min)
   - Implement preprocess/build_catalog.py per PROJECT_SPEC section 6, with `search.use_embeddings` respected (start with false).
   - Create preprocess/countries.json (about 40 countries, en/fr/es/ar aliases, word boundaries, longest names first).
   - Use the SQLite schema of PROJECT_SPEC 7.1 (hub/db.py).
