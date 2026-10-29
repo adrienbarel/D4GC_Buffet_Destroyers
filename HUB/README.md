@@ -46,6 +46,35 @@ pip install -r requirements.txt
 python preprocess/build_catalog.py   # builds data/catalog.sqlite (once)
 python run_all.py                    # cloud :9000, hub :8000, devices :8101-8104
 ```
-Windows: `py -m venv .venv` then `.venv\Scripts\Activate.ps1`.
+
+### Windows (PowerShell)
+
+Run these commands from the repository's `HUB` folder (not the repository root):
+
+```powershell
+cd .\HUB
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
+
+If PowerShell blocks activation, allow it for this terminal only, then activate:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+.\.venv\Scripts\Activate.ps1
+```
+
+Before building the catalog, add the data pack described above. At minimum it must
+contain `data_raw\Parsed\` with the Markdown files and `data_raw\documentation.csv`.
+Then run:
+
+```powershell
+python preprocess\build_catalog.py
+python run_all.py
+```
+
+Open the hub at http://127.0.0.1:8000. `run_all.py` can build the catalog
+automatically if it is missing, but it still needs the input data pack.
 
 Hub dashboard: http://localhost:8000. Devices: http://localhost:8101 to 8104 (in Kiro, open them from the PORTS tab).

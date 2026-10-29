@@ -144,7 +144,7 @@ const api = async (path, body) => {
   return (r.headers.get("content-type")||"").includes("json") ? r.json() : r.text();
 };
 let ST = null, emergency = false, lastTerms = [];
-const role = () => $("#role").value || "doctor";
+const role = () => $("#role")?.value || "doctor";   // selector removed: the server uses the session's role
 const AV = { "original_on_hub (core)":["green","🟢 Original on hub (core)"], "original_on_hub (reserve)":["green","🟢 Original on hub (reserve)"],
   "original_on_hub (fetched)":["green","🟢 Original on hub (fetched)"], "text_on_hub_original_in_cloud":["amber","🟠 Text on hub · original in cloud"] };
 const ACC = { allowed:["teal","✔ Your group"], log:["blue","👁 Outside your group (logged)"], needs_approval:["red","🔒 Needs approval"] };
